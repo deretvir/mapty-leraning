@@ -12,69 +12,42 @@ const inputCadence = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
 const submitBtn = document.querySelector('.form__btn');
 
-let map, mapEvent;
+class App {
+  #map;
+  #mapEvent;
 
-function temporaryMarker() {
-  const marker = L.marker([mapEvent.latlng.lat, mapEvent.latlng.lng])
-    .addTo(map)
-    .bindPopup(
-      L.popup({
-        autoClose: true,
-        closeOnClick: true,
-        className: 'running-popup',
-      }).close()
-    );
-}
-
-function workoutWindow() {
-  form.classList.remove('hidden');
-  inputDistance.focus();
-}
-
-(function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function (position) {
-      const currentCoords = [
-        position.coords.latitude,
-        position.coords.longitude,
-      ];
-      console.log(currentCoords);
-      map = L.map('map').setView(currentCoords, 17);
-      L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution:
-          '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
-
-      map.on('click', function (e) {
-        mapEvent = e;
-        console.log(e);
-        temporaryMarker();
-        workoutWindow();
-      });
-    });
-  } else {
-    alert('Geolocation is not supported by this browser.');
+  constructor() {
+    this._getPosition();
+    inputType.addEventListener('change', this._toogleElevationField.bind(this));
   }
-})();
-//getLocation();
+  _getPosition() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(this._loadMap.bind(this));
+      console.log(this);
+    } else alert('ehh');
+  }
+  _loadMap(position) {
+    const currentCoords = [position.coords.latitude, position.coords.longitude];
+    this.#map = L.map('map').setView(currentCoords, 17);
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(this.#map);
+    this.#map.on('click', this._showForm.bind(this));
+  }
 
-submitBtn.addEventListener('click', function () {
-  console.log(mapEvent);
-  const marker = L.marker([mapEvent.latlng.lat, mapEvent.latlng.lng])
-    .addTo(map)
-    .bindPopup(
-      L.popup({
-        autoClose: false,
-        closeOnClick: false,
-        className: 'running-popup',
-      })
-    )
-    .setPopupContent('kupa')
-    .openPopup();
-  console.log('cliclCoords', mapEvent.latlng.lat, mapEvent.latlng.lng);
-});
+  _showForm(e) {
+    this.#mapEvent = e;
+    console.log(e);
+    form.classList.remove('hidden');
+    inputDistance.focus();
+  }
+  _toogleElevationField() {
+    inputCadence.value = inputDistance.value = inputDuration.value = '';
+  }
+  //console.log('ok');
+}
 
-inputType.addEventListener('change', function () {
-  inputCadence.value = inputDistance.value = inputDuration.value = '';
-});
+const app = new App();
+app;

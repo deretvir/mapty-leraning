@@ -218,3 +218,19 @@ a:visited {
 .cycling-popup .leaflet-popup-content-wrapper {
   border-left: 5px solid var(--color-brand--1);
 }
+
+.workout_btn {
+  width: 50px;
+  /*place-self: center;*/
+  align-self: center;
+  justify-self: center;
+  border: 1px solid black;
+  padding: 1px;
+  text-align: center;
+  background-color: #507491;
+  display: block;
+}
+
+.btn_hidden {
+  display: none;
+}

@@ -66,3 +66,28 @@ submitBtn.addEventListener('click', function () {
 inputType.addEventListener('change', function () {
   inputCadence.value = inputDistance.value = inputDuration.value = '';
 });
+
+`<li class="workout workout--cycling" data-id="${activity.idCalc()}">
+  <h2 class="workout__title">Running on ${month} ${day}</h2>
+  <div class="workout__details">
+    <span class="workout__icon">🚴‍♀️</span>
+    <span class="workout__value">${distance}</span>
+    <span class="workout__unit">km</span>
+  </div>
+  <div class="workout__details">
+    <span class="workout__icon">⏱</span>
+    <span class="workout__value">${duration}</span>
+    <span class="workout__unit">min</span>
+  </div>
+  <div class="workout__details">
+    <span class="workout__icon">⚡️</span>
+    <span class="workout__value">${activity.avrageSpeed}</span>
+    <span class="workout__unit">min/km</span>
+  </div>
+  <div class="workout__details">
+    <span class="workout__icon">⛰</span>
+    <span class="workout__value">${elevation}</span>
+    <span class="workout__unit">m</span>
+  </div>
+</li>
+`;

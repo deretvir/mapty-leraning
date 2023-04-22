@@ -16,34 +16,57 @@ Oct: '10',
 Nov: '11',
 Dec: '12',
 };
+let containerWorkouts = document.querySelector('.workouts');
 
+//inputs
 const form = document.querySelector('.form');
-const containerWorkouts = document.querySelector('.workouts');
 const inputType = document.querySelector('.form__input--type');
 const inputDistance = document.querySelector('.form__input--distance');
 const inputDuration = document.querySelector('.form__input--duration');
 const inputSPM = document.querySelector('.form__input--cadence');
 const inputElevation = document.querySelector('.form__input--elevation');
+
+//buttons
 const submitBtn = document.querySelector('.form__btn');
+const editBtnForm = document.querySelector('.form_edit_btn');
+
+//sorting
+const sortByTypeBtn = document.querySelector('.by_type');
+const sortByDurationBtn = document.querySelector('.by_duration');
+const sortByDistanceBtn = document.querySelector('.by_distance');
+const sortByDateBtn = document.querySelector('.by_date');
+
+// te zmienne bym musial do localStorage tez dac
+// bo przy starcie sie resetuja na wartosci 0
+let clickSortByType = 0;
+let clickSortByDuration = 0;
+let clickSortByDistance = 0;
+let clickSortByDate = 0;
 
 class workout {
-  date;
+  // date;
   id;
-  month;
+  date;
   day;
+  month;
+  year;
+  time;
 
   //                    [km]     [min]
-  constructor(coords, distance, duration) {
+  constructor(coords, distance, duration, date) {
     this.coords = coords;
     this.distance = distance;
     this.duration = duration;
+    this.date = date;
     this.idCalc();
   }
   idCalc() {
-    this.date = new Date();
-    const [, month, day, year, time] = this.date.toString().split(' ');
+    //const date = new Date();
+    const [, month, day, year, time] = this.date.split(' ');
     this.day = day;
     this.month = month;
+    this.year = year;
+    this.time = time;
     const [hour, minute, secound] = time.split(':');
     this.id = `${year}${months[month]}${day}${hour}${minute}${secound}`;
     return this.id;
@@ -53,8 +76,8 @@ class workout {
 class running extends workout {
   type = 'running';
   tempoRunning;
-  constructor(coords, distance, duration, SPM) {
-    super(coords, distance, duration);
+  constructor(coords, distance, duration, date, SPM) {
+    super(coords, distance, duration, date);
     this.SPM = SPM;
     this.tempoRunningCalc();
   }
@@ -68,8 +91,8 @@ class running extends workout {
 class cycling extends workout {
   type = 'cycling';
   avrageSpeed;
-  constructor(coords, distance, duration, elevationGain) {
-    super(coords, distance, duration);
+  constructor(coords, distance, duration, date, elevationGain) {
+    super(coords, distance, duration, date);
     this.elevationGain = elevationGain;
     this.avrageSpeedCalc();
   }
@@ -79,8 +102,8 @@ class cycling extends workout {
   }
 }
 
-const run1 = new running([20, 30], 3, 20, 50);
-const cycling1 = new cycling([40, 20], 20, 60, 500);
+//const run1 = new running([20, 30], 3, 20, 50);
+//const cycling1 = new cycling([40, 20], 20, 60, 500);
 
 class App {
   #map;
@@ -89,30 +112,24 @@ class App {
   #workouts = [];
   markers = [];
 
+  lastTargetId;
+
   constructor() {
     this._getPosition();
     this.getLocalStorage();
-    submitBtn.addEventListener('click', this._newWorkout.bind(this));
+    submitBtn.addEventListener('click', this._newWorkoutFromMap.bind(this));
     //deleteWorkoutButton.addEventListener('click');
     inputType.addEventListener('change', this._toogleElevationField.bind(this));
     containerWorkouts.addEventListener(
       'click',
       this.focusOnSpecificElement.bind(this)
     );
-  }
-  displayButton(workoutEl) {
-    const deleteWorkoutButton = document.querySelectorAll(
-      '.deleteWorkoutButton'
-    );
-    const editWorkoutButton = document.querySelectorAll('.edit_btn');
+    editBtnForm.addEventListener('click', this.editWorkout.bind(this));
 
-    deleteWorkoutButton.forEach(btn => btn.classList.add('btn_hidden'));
-    editWorkoutButton.forEach(btn => btn.classList.add('btn_hidden'));
-    // console.log(deleteWorkoutButton);
-    workoutEl
-      .querySelector('.deleteWorkoutButton')
-      .classList.remove('btn_hidden');
-    workoutEl.querySelector('.edit_btn').classList.remove('btn_hidden');
+    sortByDateBtn.addEventListener('click', this.sortByDate.bind(this));
+    sortByTypeBtn.addEventListener('click', this.sortByType.bind(this));
+    sortByDurationBtn.addEventListener('click', this.sortByDuration.bind(this));
+    sortByDistanceBtn.addEventListener('click', this.sortByDistance.bind(this));
   }
 
   _getPosition() {
@@ -144,8 +161,17 @@ class App {
     this.#mapEvent = e;
     console.log(e);
     form.classList.remove('hidden');
+    submitBtn.classList.remove('hidden');
+    editBtnForm.classList.add('hidden');
     inputDistance.focus();
   }
+
+  // _showFormEdit() {
+  //   console.log('ok');
+  //   form.classList.remove('hidden');
+  //   editBtnForm.classList.remove('hidden');
+  //   inputDistance.focus();
+  // }
   cleanInputs() {
     inputSPM.value = inputDistance.value = inputDuration.value = '';
   }
@@ -187,9 +213,9 @@ class App {
         })
       )
       .setPopupContent(
-        ` ${activity.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'} ${this.displayDate(
-          new Date()
-        )}`
+        ` ${activity.type === 'running' ? '🏃‍♂️' : '🚴‍♀️'}  ${activity.day}.${
+          months[activity.month]
+        }.${activity.year} ${activity.time} `
       )
       .openPopup();
     this.markers.push(marker);
@@ -244,14 +270,14 @@ class App {
     form.insertAdjacentHTML('afterend', html);
   }
 
-  _newWorkout() {
-    const date = new Date();
-    //let html;
-    const [, month, day, year, time] = date.toString().split(' ');
+  _newWorkout(coords, date) {
+    // const date = new Date();
+    // //let html;
+    // const [, month, day, year, time] = date.toString().split(' ');
     let activity;
     //input data
     const typeWorkout = inputType.value;
-    const coords = [this.#mapEvent.latlng.lat, this.#mapEvent.latlng.lng];
+    //const coords = [this.#mapEvent.latlng.lat, this.#mapEvent.latlng.lng];
     const distance = inputDistance.value;
     const duration = inputDuration.value;
     const SPM = inputSPM.value; //running
@@ -267,40 +293,53 @@ class App {
     ) {
       this.cleanInputs();
       form.classList.add('hidden');
+      submitBtn.classList.add('hidden');
+      // editWorkoutButton;
       if (typeWorkout === 'running') {
-        activity = new running(coords, distance, duration, SPM);
+        activity = new running(coords, distance, duration, date, SPM);
         console.log(activity.idCalc());
-        this.marker(
-          activity,
-          this.#mapEvent.latlng.lat,
-          this.#mapEvent.latlng.lng
-        );
+
         console.log(activity);
         return activity;
-
         // form.insertAdjacentHTML('afterend', this.htmlInsert(activity));
       }
       if (typeWorkout === 'cycling') {
-        activity = new cycling(coords, distance, duration, elevation);
-        this.marker(
-          activity,
-          this.#mapEvent.latlng.lat,
-          this.#mapEvent.latlng.lng
-        );
+        activity = new cycling(coords, distance, duration, date, elevation);
         return activity;
         // form.insertAdjacentHTML('afterend', this.htmlInsert(activity));
       }
     } else alert('wrong input my friend');
   }
 
-  _newWorkoutFromMap(activity) {
+  _newWorkoutFromMap() {
+    let date = new Date();
+    let activity = this._newWorkout(
+      [this.#mapEvent.latlng.lat, this.#mapEvent.latlng.lng],
+      date.toString()
+    );
     if (!activity) return;
+    this.marker(activity, this.#mapEvent.latlng.lat, this.#mapEvent.latlng.lng);
     console.log(activity);
     this.htmlInsert(activity);
     this.#workouts.push(activity);
     console.log(this.#workouts);
     this._setLocalStorage();
   }
+  displayButton(workoutEl) {
+    const deleteWorkoutButton = document.querySelectorAll(
+      '.deleteWorkoutButton'
+    );
+    const editWorkoutButton = document.querySelectorAll('.edit_btn');
+
+    deleteWorkoutButton.forEach(btn => btn.classList.add('btn_hidden'));
+    editWorkoutButton.forEach(btn => btn.classList.add('btn_hidden'));
+    // console.log(deleteWorkoutButton);
+    workoutEl
+      .querySelector('.deleteWorkoutButton')
+      .classList.remove('btn_hidden');
+    workoutEl.querySelector('.edit_btn').classList.remove('btn_hidden');
+  }
+
   _setLocalStorage() {
     localStorage.setItem('workouts', JSON.stringify(this.#workouts));
   }
@@ -309,9 +348,14 @@ class App {
     console.log(data);
     if (!data) return;
     this.#workouts = data;
+
     //this.workoutss = data;
-    this.#workouts.forEach(work => {
-      //if (!work == null) {
+    this.#workouts.forEach((work, i) => {
+      // if (!work) {
+      //   this.#workouts.splice(i, 1);
+      //   this._setLocalStorage();
+      // }
+
       this.htmlInsert(work);
       // }
     });
@@ -323,10 +367,16 @@ class App {
     // moze by sie to dalo gdzies lepiej zdefiniowac
 
     const workoutEl = e.target.closest('.workout');
-    console.log(e.target);
+    //console.log(e.target);
+    // console.log(e.target);
     if (!workoutEl) return;
+    this.lastTargetId = workoutEl.dataset.id;
+    console.log(this.lastTargetId);
     const workOutPop = this.#workouts.find(e => e.id === workoutEl.dataset.id);
-    form.classList.add('hidden');
+
+    if (e.target !== workoutEl.querySelector('.edit_btn')) {
+      form.classList.add('hidden');
+    }
     this.displayButton(workoutEl);
     this.moveToPop(workOutPop);
 
@@ -337,13 +387,25 @@ class App {
       }.bind(this)
     );
 
-    workoutEl.querySelector('.edit_btn').addEventListener(
-      'click'
-      // function () {
-      //   this.editWorkout(workOutPop.id);
-      // }.bind(this)
-    );
+    workoutEl.querySelector('.edit_btn').addEventListener('click', function () {
+      //console.log('ok');
+      form.classList.remove('hidden');
+      editBtnForm.classList.remove('hidden');
+      submitBtn.classList.add('hidden');
+      inputDistance.focus();
+    });
+
+    // function () {
+    //   this.editWorkout(workOutPop.id);
+    // }.bind(this)
     // deleteWorkoutButton.
+  }
+  moveToPop(workOutPop) {
+    //console.log(workOutPop.id);
+    this.#map.setView(workOutPop.coords, 17, {
+      animate: true,
+      pan: { duration: 1 },
+    });
   }
 
   // move to popup
@@ -371,23 +433,198 @@ class App {
   }
 
   // edit workout
-  //removeHtmlWorkout() {}
-  moveToPop(workOutPop) {
-    console.log(workOutPop.id);
-    this.#map.setView(workOutPop.coords, 17, {
-      animate: true,
-      pan: { duration: 1 },
-    });
+
+  editWorkout() {
+    const workoutIdToReplace = this.#workouts.findIndex(
+      e => e.id === this.lastTargetId
+    );
+
+    console.log(
+      this.#workouts[workoutIdToReplace].coords,
+      this.#workouts[workoutIdToReplace].date
+    ); //_latlng.lng
+
+    let changedActivity = this._newWorkout(
+      this.#workouts[workoutIdToReplace].coords,
+      this.#workouts[workoutIdToReplace].date
+    );
+    console.log(changedActivity);
+    //  console.log(activity);
+    this.#workouts[workoutIdToReplace] = changedActivity;
+    this._setLocalStorage();
+    location.reload();
+
+    // console.log(workoutIdToReplace);
   }
-  editWorkout() {}
+
+  //sorting
+  sortedLi(resultId) {
+    const liWorkouts = containerWorkouts.querySelectorAll('li');
+    const liWorkoutsNew = [];
+    for (let i = 0; i < resultId.length; i++) {
+      for (let j = 0; j < resultId.length; j++) {
+        if (resultId[i] === liWorkouts[j].getAttribute('data-id')) {
+          // console.log('true');
+          liWorkoutsNew.push(liWorkouts[j]);
+        }
+      }
+    }
+    //ciekawe usuniecie elementow tylko Li z ul. Bez tego wszytkie queryselctor
+    // na form by nie dzialaly
+    liWorkouts.forEach(li => li.remove());
+    liWorkoutsNew.forEach(e => containerWorkouts.appendChild(e));
+    console.log(containerWorkouts);
+  }
+  sortByType() {
+    //  const clicks=0;
+    // const OldUl =
+    const runningArray = [];
+    const cyclingArray = [];
+    const runningIdArray = [];
+    const cyclingIdArray = [];
+    let resultId = [];
+    const liWorkouts = containerWorkouts.querySelectorAll('li');
+    const liWorkoutsNew = [];
+    // console.log(liWorkouts[0].getAttribute('data-id'));
+    // console.log(liWorkouts);
+
+    this.#workouts.forEach(e => {
+      if (e.type === 'running') {
+        runningArray.push(e);
+        runningIdArray.push(e.id);
+      } else {
+        cyclingArray.push(e);
+        cyclingIdArray.push(e.id);
+      }
+    });
+
+    // console.log(runningIdArray);
+    // console.log(cyclingIdArray);
+    if (clickSortByType % 2 === 0) {
+      this.#workouts = runningArray.concat(cyclingArray);
+      resultId = runningIdArray.concat(cyclingIdArray);
+      //console.log(resultId);
+      //  console.log('hehe');
+    }
+    if (clickSortByType % 2 !== 0) {
+      this.#workouts = cyclingArray.concat(runningArray);
+      resultId = cyclingIdArray.concat(runningIdArray);
+    }
+
+    this.sortedLi(resultId.reverse());
+    // console.log(resultId);
+
+    //  console.log(containerWorkouts);
+    //liWorkouts.replaceWith(liWorkoutsNew);
+    //containerWorkouts = document.querySelector('.workouts');
+    this._setLocalStorage();
+    clickSortByType++;
+    // this._setLocalStorage();
+    // location.reload();
+  }
+
+  sortByDuration() {
+    let resultId = [];
+    if (clickSortByDuration % 2 === 0) {
+      // mozna tez uzyc
+      //this.#workouts.sort((a, b) => parseFloat(a.duration) - parseFloat(b.duration));
+      this.#workouts = this.sortMinMax(this.#workouts, 'duration');
+    } else this.#workouts = this.sortMaxMin(this.#workouts, 'duration');
+    this.#workouts.forEach(e => resultId.push(e.id));
+    this.sortedLi(resultId.reverse());
+    //this._setLocalStorage();
+    clickSortByDuration++;
+    //   this.#workouts = sortedArray;
+  }
+  sortByDistance() {
+    let resultId = [];
+    if (clickSortByDistance % 2 === 0) {
+      this.#workouts.sort(
+        (a, b) => parseFloat(a.distance) - parseFloat(b.duration)
+      );
+      //this.#workouts = this.sortMinMax(this.#workouts, 'distance');
+    }
+    //this.#workouts = this.sortMaxMin(this.#workouts, 'distance');
+    else
+      this.#workouts.sort(
+        (a, b) => parseFloat(b.distance) - parseFloat(a.duration)
+      );
+    this.#workouts.forEach(e => resultId.push(e.id));
+    this.sortedLi(resultId.reverse());
+    this._setLocalStorage();
+    clickSortByDistance++;
+    //   this.#workouts = sortedArray;
+  }
+
+  sortByDate() {
+    let resultId = [];
+    if (clickSortByDate % 2 === 0) {
+      this.#workouts.sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+    //this.#workouts = this.sortMaxMin(this.#workouts, 'distance');
+    else this.#workouts.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    this.#workouts.forEach(e => resultId.push(e.id));
+    this.sortedLi(resultId.reverse());
+    this._setLocalStorage();
+    clickSortByDate++;
+  }
+
+  //te funkcje sortMinMax i sortMaxMin nie sa potrzebne
+  sortMinMax(arr1, duration) {
+    let x = duration;
+    for (let i = 0; i < arr1.length; i++) {
+      let swap = false;
+      let minIndex = i;
+      for (let j = i + 1; j < arr1.length; j++) {
+        if (arr1[j][x] < arr1[minIndex][x]) {
+          minIndex = j;
+          swap = true;
+        }
+      }
+      if (swap) {
+        let temp = arr1[i];
+        arr1[i] = arr1[minIndex];
+        arr1[minIndex] = temp;
+      } else {
+        // Array is already sorted
+        break;
+      }
+    }
+    return arr1;
+  }
+  sortMaxMin(arr1, duration) {
+    let x = duration;
+    for (let i = 0; i < arr1.length; i++) {
+      let swap = false;
+      let minIndex = i;
+      for (let j = i + 1; j < arr1.length; j++) {
+        if (arr1[j][x] > arr1[minIndex][x]) {
+          minIndex = j;
+          swap = true;
+        }
+      }
+      if (swap) {
+        let temp = arr1[i];
+        arr1[i] = arr1[minIndex];
+        arr1[minIndex] = temp;
+      } else {
+        // Array is already sorted
+        break;
+      }
+    }
+    return arr1;
+  }
+  //removeHtmlWorkout() {}
 }
 
 const app = new App();
 
-// const text1 =
-//   'Mon Mar 27 2023 18:41:57 GMT+0200 (czas środkowoeuropejski letni)';
-// console.log(text1.split(' ').splice(4, 1).toString().replace(/:/g, ''));
-// console.log(text1.split(' ').slice(4, 5));
-// const myFish = ['parrot', 'anemone', 'blue', 'trumpet', 'sturgeon'];
-// const removed = myFish.splice(-3, 1);
-// //toString().replace(/:/g, '')
+// Do zrobienia
+//1. Podczas zapisu do local Storage app.#workouts.date zmienia się format,
+// dlatego editWOrkout nie dziala poprawnie
+// potencjalne rozwiazenie : podczas zapisu, od razu dawac date w stringu
+
+// powtorzylem dom traversing
+// array.splice
+//

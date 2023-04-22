@@ -20,7 +20,14 @@
 
 <body>
   <div class="sidebar">
-    <img src="logo.png" alt="Logo" class="logo" />
+    <div class="header">
+      <div class="logo_container"><img src="logo.png" alt="Logo" class="logo" /></div>
+      <div class="sort by_type"> sort By Type</div>
+      <div class="sort by_duration"> sort By Duration</div>
+      <div class="sort by_distance"> sort By Distance</div>
+      <div class="sort by_date"> sort By date</div>
+    </div>
+
 
     <ul class="workouts">
       <form class="form hidden">
@@ -47,7 +54,8 @@
           <label class="form__label">Elev Gain</label>
           <input class="form__input form__input--elevation" placeholder="meters" />
         </div>
-        <button class="form__btn" type="button">OK</button>
+        <button class="form__btn hidden" type="button">OK</button>
+        <button class="form_edit_btn hidden" type="button">edit</button>
       </form>
 
     </ul>
